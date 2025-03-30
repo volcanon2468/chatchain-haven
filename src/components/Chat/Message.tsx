@@ -23,7 +23,14 @@ const Message: React.FC<MessageProps> = ({ message, isFromCurrentUser }) => {
         <div className="flex flex-col">
           <div className="whitespace-pre-wrap break-words">{message.content}</div>
           <div className="flex items-center justify-end mt-1 space-x-1">
-            <span className="text-xs opacity-70">{formattedTime}</span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-xs opacity-70 cursor-help">{formattedTime}</span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p className="text-xs">IPFS Hash: {truncateHash(message.blockchainHash)}</p>
+              </TooltipContent>
+            </Tooltip>
             {isFromCurrentUser && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -55,6 +62,11 @@ const Message: React.FC<MessageProps> = ({ message, isFromCurrentUser }) => {
 const formatMessageTime = (timestamp: number) => {
   const date = new Date(timestamp);
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
+const truncateHash = (hash: string) => {
+  if (hash.length <= 12) return hash;
+  return hash.slice(0, 6) + '...' + hash.slice(-6);
 };
 
 export default Message;
