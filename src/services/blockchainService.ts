@@ -29,14 +29,29 @@ class BlockchainService {
   }
   
   private loadMessagesFromCache(): void {
-    const storedMessages = localStorage.getItem(this.localStorageKey);
-    if (storedMessages) {
-      this.messages = JSON.parse(storedMessages);
+    try {
+      const storedMessages = localStorage.getItem(this.localStorageKey);
+      if (storedMessages) {
+        this.messages = JSON.parse(storedMessages);
+      }
+    } catch (error) {
+      console.error("Error loading messages from cache:", error);
+      // If there's an error reading from localStorage, initialize with empty array
+      this.messages = [];
     }
   }
   
   private updateCache(): void {
-    localStorage.setItem(this.localStorageKey, JSON.stringify(this.messages));
+    try {
+      localStorage.setItem(this.localStorageKey, JSON.stringify(this.messages));
+    } catch (error) {
+      console.error("Error updating message cache:", error);
+      toast({
+        title: "Cache Error",
+        description: "Failed to save messages to local cache.",
+        variant: "destructive",
+      });
+    }
   }
 
   // Demo authentication status for Pinata
@@ -194,7 +209,9 @@ class BlockchainService {
   
   // Generate a fake blockchain transaction hash for demo mode
   private generateFakeHash(): string {
-    return '0x' + Array(64).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join('');
+    // Use a similar pattern to what our database is using for wallet addresses
+    return '0x' + Array.from({ length: 40 }, () => 
+      Math.floor(Math.random() * 16).toString(16)).join('');
   }
   
   // Clear all message cache - useful for testing
