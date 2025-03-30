@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { useChat } from "@/context/ChatContext";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/auth"; // Updated import path
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Loader2, MoreVertical, Users } from "lucide-react";
