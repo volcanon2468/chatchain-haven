@@ -19,8 +19,8 @@ export interface Message {
 class BlockchainService {
   private messages: Message[] = [];
   private localStorageKey = 'pinata_message_cache';
-  private pinataApiKey = 'YOUR_PINATA_API_KEY'; // For demo we use a placeholder
-  private pinataSecretKey = 'YOUR_PINATA_SECRET_KEY'; // For demo we use a placeholder
+  private pinataApiKey = '5cbee2fe3065676c77e1'; // For demo we use a placeholder
+  private pinataSecretKey = 'bae89724ce421998357f446ef4743140e771b62e30734fa885b3204f399cc777'; // For demo we use a placeholder
   private pinataGatewayUrl = 'https://gateway.pinata.cloud/ipfs/';
   
   constructor() {
@@ -42,7 +42,7 @@ class BlockchainService {
   // Demo authentication status for Pinata
   // For a real implementation, this would check API key validity
   public isDemoMode(): boolean {
-    return this.pinataApiKey === 'YOUR_PINATA_API_KEY';
+    return this.pinataApiKey === '5cbee2fe3065676c77e1';
   }
   
   // Method to set Pinata API keys at runtime
