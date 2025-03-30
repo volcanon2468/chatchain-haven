@@ -1,69 +1,88 @@
-# Welcome to your Lovable project
 
-## Project info
+# ChatChain Haven
 
-**URL**: https://lovable.dev/projects/95080add-6cfe-4035-adb6-d719890a5733
+A WhatsApp-like messaging application with blockchain message storage. Built with React, TypeScript, and Tailwind CSS.
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- 💬 Real-time messaging with blockchain storage simulation
+- 👤 User authentication with username/password
+- 👥 Contact management
+- 👪 Group chat support
+- 🔐 Profile customization
+- 📱 Responsive design for mobile and desktop
 
-**Use Lovable**
+## Technology Stack
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/95080add-6cfe-4035-adb6-d719890a5733) and start prompting.
+- **Frontend**: React, TypeScript, Tailwind CSS, Shadcn UI
+- **State Management**: Context API
+- **Routing**: React Router
+- **Data Fetching**: TanStack Query
+- **Blockchain Simulation**: Local storage with transaction hashes
 
-Changes made via Lovable will be committed automatically to this repo.
+## Getting Started
 
-**Use your preferred IDE**
+### Prerequisites
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- Node.js 16+ and npm
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Installation
 
-Follow these steps:
+1. Clone the repository
+```bash
+git clone https://github.com/yourusername/chatchain-haven.git
+cd chatchain-haven
+```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+2. Install dependencies
+```bash
+npm install
+```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+3. Start the development server
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+4. Open your browser to `http://localhost:8080`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Demo Users
 
-**Use GitHub Codespaces**
+- Username: `demo`, Password: `password`
+- Or register a new account
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Project Structure
 
-## What technologies are used for this project?
+```
+src/
+├── components/       # UI components
+│   ├── Auth/         # Authentication components
+│   ├── Chat/         # Chat interface components
+│   ├── Layout/       # Layout components
+│   └── ui/           # Reusable UI components
+├── context/          # React contexts
+│   ├── AuthContext   # Authentication state
+│   └── ChatContext   # Chat functionality and state
+├── hooks/            # Custom React hooks
+├── pages/            # Application pages/routes
+├── services/         # Service modules
+│   └── blockchainService.ts # Blockchain simulation
+└── lib/              # Utility functions
+```
 
-This project is built with .
+## Deployment
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+See [deploy.md](deploy.md) for detailed deployment instructions.
 
-## How can I deploy this project?
+## Future Enhancements
 
-Simply open [Lovable](https://lovable.dev/projects/95080add-6cfe-4035-adb6-d719890a5733) and click on Share -> Publish.
+- Integration with a real blockchain network (Ethereum, Solana, etc.)
+- End-to-end encryption
+- File sharing capabilities
+- Read receipts and typing indicators
+- Push notifications
+- Voice messages
 
-## I want to use a custom domain - is that possible?
+## License
 
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+This project is MIT licensed.

@@ -1,38 +1,22 @@
 
 import React, { useState, ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
-import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ChatProvider } from "@/context/ChatContext";
 import SidebarContent from "./SidebarContent";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 
 interface MainLayoutProps {
   children: ReactNode;
 }
 
 const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const { user, userInitials, logout } = useRequireAuth();
 
-  // Redirect to login if not authenticated
-  if (!user) {
-    navigate("/login");
-    return null;
-  }
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(part => part[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
-  };
-
-  const userInitials = getInitials(user.displayName);
+  // If not authenticated, useRequireAuth will redirect to login
+  if (!user) return null;
 
   return (
     <ChatProvider>

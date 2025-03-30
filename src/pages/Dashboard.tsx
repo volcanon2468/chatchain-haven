@@ -1,8 +1,7 @@
-
 import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useMatch } from "react-router-dom";
 import ChatList from "@/components/Chat/ChatList";
-import ChatWindow from "@/components/Chat/ChatWindow";
+import ChatWindowWrapper from "@/components/Chat/ChatWindowWrapper";
 import ContactList from "@/components/Chat/ContactList";
 import ProfileSettings from "@/components/Chat/ProfileSettings";
 
@@ -10,22 +9,26 @@ const Dashboard: React.FC = () => {
   return (
     <Routes>
       <Route index element={<ChatDashboard />} />
-      <Route path="/contacts" element={<ContactsDashboard />} />
-      <Route path="/profile" element={<ProfileDashboard />} />
-      <Route path="/settings" element={<ProfileDashboard />} />
+      <Route path="chat/:conversationId" element={<ChatDashboard />} />
+      <Route path="contacts" element={<ContactsDashboard />} />
+      <Route path="profile" element={<ProfileDashboard />} />
+      <Route path="settings" element={<ProfileDashboard />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 };
 
 const ChatDashboard: React.FC = () => {
+  const match = useMatch("/dashboard/chat/:conversationId");
+  const hasActiveChat = !!match;
+
   return (
     <div className="flex h-full">
-      <div className="w-full md:w-96 md:min-w-[360px] border-r md:max-w-sm">
+      <div className={`w-full md:w-96 md:min-w-[360px] border-r md:max-w-sm ${hasActiveChat ? 'hidden md:flex' : 'flex'}`}>
         <ChatList />
       </div>
-      <div className="hidden md:block flex-1">
-        <ChatWindow />
+      <div className={`${hasActiveChat ? 'flex' : 'hidden md:flex'} flex-1`}>
+        <ChatWindowWrapper conversationId={match?.params.conversationId} />
       </div>
     </div>
   );
