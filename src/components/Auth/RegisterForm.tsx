@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { User, LockIcon, UserCircle } from "lucide-react";
+import { User, LockIcon, UserCircle, Mail } from "lucide-react";
 
 const RegisterForm: React.FC = () => {
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -19,14 +20,14 @@ const RegisterForm: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!username || !password || !displayName) {
+    if (!username || !email || !password || !displayName) {
       return;
     }
     
     setIsSubmitting(true);
     
     try {
-      const success = await register(username, password, displayName);
+      const success = await register(username, email, password, displayName);
       if (success) {
         navigate("/dashboard");
       }
@@ -59,6 +60,22 @@ const RegisterForm: React.FC = () => {
                 onChange={(e) => setUsername(e.target.value)}
                 className="pl-10"
                 autoComplete="username"
+                required
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="Your email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="pl-10"
+                autoComplete="email"
                 required
               />
             </div>
@@ -97,7 +114,7 @@ const RegisterForm: React.FC = () => {
           <Button 
             type="submit" 
             className="w-full" 
-            disabled={isSubmitting || !username || !password || !displayName}
+            disabled={isSubmitting || !username || !email || !password || !displayName}
           >
             {isSubmitting ? "Creating Account..." : "Register"}
           </Button>
