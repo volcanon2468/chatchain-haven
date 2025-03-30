@@ -7,12 +7,15 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Search, UserPlus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
 
 const ContactList: React.FC = () => {
   const { contacts, addContact, createConversation } = useChat();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [newContactUsername, setNewContactUsername] = useState("");
   const [addingContact, setAddingContact] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const filteredContacts = contacts.filter(
     contact =>
@@ -25,8 +28,11 @@ const ContactList: React.FC = () => {
     
     setAddingContact(true);
     try {
-      await addContact(newContactUsername);
-      setNewContactUsername("");
+      const success = await addContact(newContactUsername);
+      if (success) {
+        setNewContactUsername("");
+        setDialogOpen(false);
+      }
     } finally {
       setAddingContact(false);
     }
@@ -46,7 +52,7 @@ const ContactList: React.FC = () => {
       <div className="p-4 border-b">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">Contacts</h2>
-          <Dialog>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button size="icon" variant="ghost">
                 <UserPlus className="h-5 w-5" />
@@ -62,6 +68,11 @@ const ContactList: React.FC = () => {
                     placeholder="Enter username"
                     value={newContactUsername}
                     onChange={(e) => setNewContactUsername(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !addingContact && newContactUsername.trim()) {
+                        handleAddContact();
+                      }
+                    }}
                   />
                   <Button onClick={handleAddContact} disabled={!newContactUsername.trim() || addingContact}>
                     <UserPlus className="h-4 w-4 mr-2" />

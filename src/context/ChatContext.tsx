@@ -1,7 +1,8 @@
-
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import blockchainService, { Message } from '@/services/blockchainService';
 import { useAuth, User } from './AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 // Chat types
 export interface Contact {
@@ -60,13 +61,13 @@ interface ChatProviderProps {
 
 export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
 
-  // Load contacts and conversations from "storage"
   useEffect(() => {
     if (user) {
       loadContacts();
@@ -74,7 +75,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     }
   }, [user]);
 
-  // When current conversation changes, load messages
   useEffect(() => {
     if (currentConversation) {
       loadMessages(currentConversation);
@@ -88,7 +88,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     if (storedContacts) {
       setContacts(JSON.parse(storedContacts));
     } else {
-      // Add some demo contacts for first-time users
       const demoContacts: Contact[] = [
         {
           id: 'contact1',
@@ -117,7 +116,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     if (storedConversations) {
       conversationsList = JSON.parse(storedConversations);
     } else if (contacts.length > 0) {
-      // Create default conversations with contacts
       conversationsList = contacts.map(contact => ({
         id: `conv_${contact.id}`,
         type: 'direct' as const,
@@ -126,7 +124,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       }));
     }
     
-    // Load last message for each conversation
     const updatedConversations = await Promise.all(
       conversationsList.map(async (conv) => {
         if (conv.type === 'direct' && user) {
@@ -140,7 +137,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             ? messages[messages.length - 1] 
             : undefined;
             
-          // Count unread messages
           const unreadCount = messages.filter(
             msg => msg.sender === contactId && !msg.readBy.includes(user.id)
           ).length;
@@ -180,7 +176,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       
       setMessages(loadedMessages);
       
-      // Mark messages as read
       const unreadMessageIds = loadedMessages
         .filter(msg => msg.sender !== user.id && !msg.readBy.includes(user.id))
         .map(msg => msg.id);
@@ -188,7 +183,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       if (unreadMessageIds.length > 0) {
         await blockchainService.markMessagesAsRead(unreadMessageIds, user.id);
         
-        // Update conversation unread count
         setConversations(prev => prev.map(conv => 
           conv.id === conversation.id 
             ? { ...conv, unreadCount: 0 } 
@@ -214,10 +208,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         content,
       });
       
-      // Update messages list
       setMessages(prev => [...prev, newMessage]);
       
-      // Update conversation last message
       setConversations(prev => 
         prev.map(conv => 
           conv.id === currentConversation.id 
@@ -247,7 +239,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     const contact = contacts.find(c => c.id === contactId);
     if (!contact) return;
     
-    // Check if conversation already exists
     const existingConv = conversations.find(
       c => c.type === 'direct' && c.participants.some(p => p.id === contactId)
     );
@@ -257,7 +248,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       return;
     }
     
-    // Create new conversation
     const newConv: Conversation = {
       id: `conv_${contact.id}`,
       type: 'direct',
@@ -311,24 +301,79 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const addContact = async (username: string): Promise<boolean> => {
     if (!user) return false;
     
-    // Check if contact already exists
-    const contactExists = contacts.some(c => c.username === username);
-    if (contactExists) return false;
-    
-    // In a real app, you'd verify the user exists in your system
-    // For this demo, we'll create a mock contact
-    const newContact: Contact = {
-      id: `contact_${Date.now()}`,
-      username,
-      displayName: username,
-      lastSeen: Date.now(),
-    };
-    
-    const updatedContacts = [...contacts, newContact];
-    setContacts(updatedContacts);
-    localStorage.setItem(`contacts_${user.id}`, JSON.stringify(updatedContacts));
-    
-    return true;
+    try {
+      const contactExists = contacts.some(c => c.username === username);
+      if (contactExists) {
+        toast({
+          title: "Contact already exists",
+          description: `${username} is already in your contacts.`,
+          variant: "default"
+        });
+        return false;
+      }
+      
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('username', username)
+        .single();
+      
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        toast({
+          title: "User not found",
+          description: `Could not find a user with username "${username}".`,
+          variant: "destructive"
+        });
+        return false;
+      }
+      
+      if (!profileData) {
+        toast({
+          title: "User not found",
+          description: `No user found with username "${username}".`,
+          variant: "destructive"
+        });
+        return false;
+      }
+      
+      if (profileData.id === user.id) {
+        toast({
+          title: "Cannot add yourself",
+          description: "You cannot add yourself as a contact.",
+          variant: "destructive"
+        });
+        return false;
+      }
+      
+      const newContact: Contact = {
+        id: profileData.id,
+        username: profileData.username,
+        displayName: profileData.display_name,
+        avatar: profileData.avatar_url,
+        lastSeen: Date.now(),
+        status: profileData.status || undefined,
+      };
+      
+      const updatedContacts = [...contacts, newContact];
+      setContacts(updatedContacts);
+      localStorage.setItem(`contacts_${user.id}`, JSON.stringify(updatedContacts));
+      
+      toast({
+        title: "Contact added",
+        description: `${newContact.displayName} has been added to your contacts.`,
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error adding contact:', error);
+      toast({
+        title: "Error adding contact",
+        description: "There was an error adding this contact. Please try again.",
+        variant: "destructive"
+      });
+      return false;
+    }
   };
 
   const saveConversations = (updatedConversations: Conversation[]) => {
