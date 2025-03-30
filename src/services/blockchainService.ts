@@ -21,7 +21,7 @@ class BlockchainService {
   private localStorageKey = 'pinata_message_cache';
   private pinataApiKey = '5cbee2fe3065676c77e1'; // For demo we use a placeholder
   private pinataSecretKey = 'bae89724ce421998357f446ef4743140e771b62e30734fa885b3204f399cc777'; // For demo we use a placeholder
-  private pinataGatewayUrl = 'https://gateway.pinata.cloud/ipfs/';
+  private pinataGatewayUrl = 'pink-blank-felidae-946.mypinata.cloud';
   
   constructor() {
     // Load messages from localStorage cache on init
