@@ -6,29 +6,38 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import { LockIcon, User } from "lucide-react";
+import { AlertCircle, LockIcon, Mail, User } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const LoginForm: React.FC = () => {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!username || !password) {
+    if (!email || !password) {
+      setError("Email and password are required");
       return;
     }
     
     setIsSubmitting(true);
+    setError(null);
     
     try {
-      const success = await login(username, password);
+      const success = await login(email, password);
       if (success) {
         navigate("/dashboard");
+      } else {
+        setError("Invalid login credentials. Please check your email and password.");
       }
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("An error occurred during login. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -42,22 +51,29 @@ const LoginForm: React.FC = () => {
         </div>
         <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
         <CardDescription>
-          Enter your username and password to access your account
+          Enter your email and password to access your account
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
+            <Label htmlFor="email">Email</Label>
             <div className="relative">
-              <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                id="username"
-                placeholder="Enter your username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="pl-10"
-                autoComplete="username"
+                autoComplete="email"
                 required
               />
             </div>
@@ -81,7 +97,7 @@ const LoginForm: React.FC = () => {
           <Button 
             type="submit" 
             className="w-full" 
-            disabled={isSubmitting || !username || !password}
+            disabled={isSubmitting || !email || !password}
           >
             {isSubmitting ? "Logging in..." : "Login"}
           </Button>

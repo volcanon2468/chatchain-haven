@@ -113,12 +113,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true);
     
     try {
+      console.log(`Attempting login with email: ${email}`);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
       
       if (error) {
+        console.error('Login error:', error);
         toast({
           title: "Login failed",
           description: error.message,
