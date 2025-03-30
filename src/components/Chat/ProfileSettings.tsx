@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { CardTitle, Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Pencil, UserCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const ProfileSettings: React.FC = () => {
   const { user, updateProfile } = useAuth();
@@ -17,12 +18,33 @@ const ProfileSettings: React.FC = () => {
     displayName: user?.displayName || "",
     avatar: user?.avatar || "",
   });
-  const [status, setStatus] = useState<string>("Hey there! I'm using ChatChain Haven");
+  const [status, setStatus] = useState<string>(user?.status || "Hey there! I'm using ChatChain Haven");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleStatusChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setStatus(e.target.value);
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setAvatarFile(file);
+      
+      // Show preview
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setFormData(prev => ({ ...prev, avatar: event.target.result as string }));
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,13 +54,46 @@ const ProfileSettings: React.FC = () => {
     
     setIsSubmitting(true);
     try {
-      // In a real app, you'd upload the avatar here if it's a file
-      await updateProfile(formData);
-      setIsEditing(false);
-      toast({
-        title: "Profile updated",
-        description: "Your profile has been updated successfully",
+      let avatarUrl = user.avatar;
+      
+      // Upload new avatar if provided
+      if (avatarFile) {
+        const fileExt = avatarFile.name.split('.').pop();
+        const filePath = `${user.id}-${Date.now()}.${fileExt}`;
+        
+        // Check if storage bucket exists
+        const { data: bucketExists } = await supabase.storage.getBucket('avatars');
+        
+        // Create bucket if it doesn't exist
+        if (!bucketExists) {
+          await supabase.storage.createBucket('avatars', { public: true });
+        }
+        
+        // Upload the file
+        const { data, error } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, avatarFile);
+          
+        if (error) {
+          throw error;
+        }
+        
+        // Get the public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(filePath);
+          
+        avatarUrl = publicUrl;
+      }
+      
+      // Update profile with all changes
+      await updateProfile({
+        ...formData,
+        avatar: avatarUrl,
+        status
       });
+      
+      setIsEditing(false);
     } catch (error) {
       console.error("Failed to update profile:", error);
       toast({
@@ -79,9 +134,18 @@ const ProfileSettings: React.FC = () => {
               </Avatar>
               {isEditing && (
                 <div className="absolute bottom-4 right-0">
-                  <Button size="icon" variant="outline" className="rounded-full h-8 w-8 bg-background">
-                    <Pencil className="h-4 w-4" />
-                  </Button>
+                  <label htmlFor="avatar-upload">
+                    <Button size="icon" variant="outline" className="rounded-full h-8 w-8 bg-background cursor-pointer">
+                      <Pencil className="h-4 w-4" />
+                      <input
+                        id="avatar-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleAvatarChange}
+                      />
+                    </Button>
+                  </label>
                 </div>
               )}
             </div>
@@ -114,7 +178,7 @@ const ProfileSettings: React.FC = () => {
                   id="status"
                   name="status"
                   value={status}
-                  onChange={(e) => setStatus(e.target.value)}
+                  onChange={handleStatusChange}
                   disabled={!isEditing}
                   placeholder="Your status message"
                   className="resize-none"
@@ -143,7 +207,9 @@ const ProfileSettings: React.FC = () => {
                       displayName: user.displayName,
                       avatar: user.avatar,
                     });
+                    setStatus(user.status || "Hey there! I'm using ChatChain Haven");
                     setIsEditing(false);
+                    setAvatarFile(null);
                   }}
                   disabled={isSubmitting}
                 >

@@ -9,7 +9,93 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      group_members: {
+        Row: {
+          group_id: string
+          id: string
+          joined_at: string
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          id?: string
+          joined_at?: string
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          id?: string
+          joined_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          blockchain_hash: string | null
+          content: string
+          group_id: string | null
+          id: string
+          read_by: string[] | null
+          receiver_id: string | null
+          sender_id: string
+          timestamp: string
+        }
+        Insert: {
+          blockchain_hash?: string | null
+          content: string
+          group_id?: string | null
+          id?: string
+          read_by?: string[] | null
+          receiver_id?: string | null
+          sender_id: string
+          timestamp?: string
+        }
+        Update: {
+          blockchain_hash?: string | null
+          content?: string
+          group_id?: string | null
+          id?: string
+          read_by?: string[] | null
+          receiver_id?: string | null
+          sender_id?: string
+          timestamp?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string
+          id: string
+          status: string | null
+          updated_at: string
+          username: string
+          wallet_address: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name: string
+          id: string
+          status?: string | null
+          updated_at?: string
+          username: string
+          wallet_address?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          status?: string | null
+          updated_at?: string
+          username?: string
+          wallet_address?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
