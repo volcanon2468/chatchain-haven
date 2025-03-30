@@ -1,41 +1,12 @@
 
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { User, AuthContextType } from './types';
 
-// Define user type
-export type User = {
-  id: string;
-  username: string;
-  displayName: string;
-  avatar?: string;
-  walletAddress: string;
-  status?: string;
-};
-
-interface AuthContextType {
-  user: User | null;
-  supabaseUser: SupabaseUser | null;
-  session: Session | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (username: string, email: string, password: string, displayName: string) => Promise<boolean>;
-  logout: () => void;
-  updateProfile: (data: Partial<User>) => Promise<boolean>;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface AuthProviderProps {
   children: ReactNode;

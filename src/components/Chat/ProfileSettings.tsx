@@ -1,6 +1,6 @@
 
 import React, { useState } from "react";
-import { useAuth, User } from "@/context/AuthContext";
+import { useAuth, User } from "@/context/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

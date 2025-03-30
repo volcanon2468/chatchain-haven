@@ -1,6 +1,7 @@
+
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import blockchainService, { Message } from '@/services/blockchainService';
-import { useAuth, User } from './AuthContext';
+import { useAuth, User } from './auth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 

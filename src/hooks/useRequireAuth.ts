@@ -1,7 +1,7 @@
 
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth, User } from '@/context/AuthContext';
+import { useAuth, User } from '@/context/auth';
 
 export const useRequireAuth = () => {
   const { user, logout } = useAuth();
