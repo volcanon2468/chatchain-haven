@@ -18,9 +18,10 @@ export interface Message {
 class BlockchainService {
   private messages: Message[] = [];
   private localStorageKey = 'pinata_message_cache';
-  private pinataApiKey = '';
-  private pinataSecretKey = '';
-  private pinataGatewayUrl = '';
+  private pinataApiKey = '5cbee2fe3065676c77e1';
+  private pinataSecretKey = 'bae89724ce421998357f446ef4743140e771b62e30734fa885b3204f399cc777
+';
+  private pinataGatewayUrl = 'pink-blank-felidae-946.mypinata.cloud';
   private configKey = 'pinata_config';
   
   constructor() {
@@ -62,9 +63,10 @@ class BlockchainService {
       const config = localStorage.getItem(this.configKey);
       if (config) {
         const { apiKey, secretKey, gatewayUrl } = JSON.parse(config);
-        this.pinataApiKey = apiKey || '';
-        this.pinataSecretKey = secretKey || '';
-        this.pinataGatewayUrl = gatewayUrl || '';
+        this.pinataApiKey = apiKey || '5cbee2fe3065676c77e1';
+        this.pinataSecretKey = secretKey || 'bae89724ce421998357f446ef4743140e771b62e30734fa885b3204f399cc777
+';
+        this.pinataGatewayUrl = gatewayUrl || 'pink-blank-felidae-946.mypinata.cloud';
       }
     } catch (error) {
       console.error("Error loading Pinata config:", error);
