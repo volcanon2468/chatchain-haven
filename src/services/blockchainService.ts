@@ -1,4 +1,3 @@
-
 import { toast } from "@/hooks/use-toast";
 import axios from 'axios';
 import { supabase } from "@/integrations/supabase/client";
@@ -15,18 +14,21 @@ export interface Message {
   blockchainHash: string;
 }
 
-// Integration with IPFS via Pinata for demonstration purposes
-// In a production app, you'd use a more sophisticated blockchain solution
+// Integration with IPFS via Pinata
 class BlockchainService {
   private messages: Message[] = [];
   private localStorageKey = 'pinata_message_cache';
-  private pinataApiKey = '5cbee2fe3065676c77e1'; // For demo we use a placeholder
-  private pinataSecretKey = 'bae89724ce421998357f446ef4743140e771b62e30734fa885b3204f399cc777'; // For demo we use a placeholder
-  private pinataGatewayUrl = 'pink-blank-felidae-946.mypinata.cloud';
+  private pinataApiKey = '';
+  private pinataSecretKey = '';
+  private pinataGatewayUrl = '';
+  private configKey = 'pinata_config';
   
   constructor() {
     // Load messages from localStorage cache on init
     this.loadMessagesFromCache();
+    
+    // Load Pinata configuration if available
+    this.loadPinataConfig();
   }
   
   private loadMessagesFromCache(): void {
@@ -55,19 +57,48 @@ class BlockchainService {
     }
   }
 
+  private loadPinataConfig(): void {
+    try {
+      const config = localStorage.getItem(this.configKey);
+      if (config) {
+        const { apiKey, secretKey, gatewayUrl } = JSON.parse(config);
+        this.pinataApiKey = apiKey || '';
+        this.pinataSecretKey = secretKey || '';
+        this.pinataGatewayUrl = gatewayUrl || '';
+      }
+    } catch (error) {
+      console.error("Error loading Pinata config:", error);
+    }
+  }
+
+  private savePinataConfig(): void {
+    try {
+      const config = {
+        apiKey: this.pinataApiKey,
+        secretKey: this.pinataSecretKey,
+        gatewayUrl: this.pinataGatewayUrl
+      };
+      localStorage.setItem(this.configKey, JSON.stringify(config));
+    } catch (error) {
+      console.error("Error saving Pinata config:", error);
+    }
+  }
+
   // Demo authentication status for Pinata
-  // For a real implementation, this would check API key validity
   public isDemoMode(): boolean {
-    return this.pinataApiKey === '5cbee2fe3065676c77e1';
+    return !this.pinataApiKey || !this.pinataSecretKey;
   }
   
   // Method to set Pinata API keys at runtime
-  public setApiKeys(apiKey: string, secretKey: string): void {
+  public setApiKeys(apiKey: string, secretKey: string, gatewayUrl: string = 'https://gateway.pinata.cloud'): void {
     this.pinataApiKey = apiKey;
     this.pinataSecretKey = secretKey;
+    this.pinataGatewayUrl = gatewayUrl;
+    this.savePinataConfig();
+    
     toast({
-      title: "Blockchain Connected",
-      description: "Your IPFS connection has been established.",
+      title: "IPFS Connected",
+      description: "Your Pinata IPFS connection has been established.",
     });
   }
 
@@ -81,6 +112,8 @@ class BlockchainService {
     }
     
     try {
+      console.log("Uploading to IPFS via Pinata...");
+      
       const data = JSON.stringify({
         pinataOptions: {
           cidVersion: 1
@@ -103,10 +136,20 @@ class BlockchainService {
         }
       );
       
+      console.log("IPFS upload successful:", response.data);
+      toast({
+        description: "Message stored on IPFS blockchain",
+      });
+      
       return response.data.IpfsHash;
     } catch (error) {
       console.error("Error uploading to IPFS:", error);
-      return null;
+      toast({
+        title: "IPFS Error",
+        description: "Failed to store message on IPFS. Using local storage instead.",
+        variant: "destructive",
+      });
+      return this.generateFakeHash(); // Fallback to fake hash
     }
   }
 
@@ -118,7 +161,16 @@ class BlockchainService {
     }
     
     try {
-      const response = await axios.get(`${this.pinataGatewayUrl}${hash}`);
+      let gatewayUrl = this.pinataGatewayUrl;
+      if (!gatewayUrl.startsWith('http')) {
+        gatewayUrl = `https://${gatewayUrl}`;
+      }
+      if (!gatewayUrl.endsWith('/')) {
+        gatewayUrl += '/';
+      }
+      
+      console.log(`Fetching from IPFS: ${gatewayUrl}ipfs/${hash}`);
+      const response = await axios.get(`${gatewayUrl}ipfs/${hash}`);
       return response.data;
     } catch (error) {
       console.error("Error retrieving from IPFS:", error);
@@ -135,6 +187,8 @@ class BlockchainService {
     };
     
     try {
+      console.log("Preparing to send message:", messageContent);
+      
       // Upload to IPFS or generate fake hash in demo mode
       const ipfsHash = await this.uploadToIPFS(messageContent);
       
@@ -254,8 +308,11 @@ class BlockchainService {
         }
       }
       
+      // Attempt to load IPFS content for non-demo messages if needed
+      const enhancedMessages = await this.enrichMessagesWithIPFSContent(mergedMessages);
+      
       // Sort by timestamp
-      return mergedMessages.sort((a, b) => a.timestamp - b.timestamp);
+      return enhancedMessages.sort((a, b) => a.timestamp - b.timestamp);
     } catch (error) {
       console.error('Error retrieving messages:', error);
       
@@ -275,6 +332,45 @@ class BlockchainService {
         return false;
       }).sort((a, b) => a.timestamp - b.timestamp);
     }
+  }
+  
+  // Enrich messages with IPFS content if available and needed
+  private async enrichMessagesWithIPFSContent(messages: Message[]): Promise<Message[]> {
+    // Skip IPFS enrichment in demo mode
+    if (this.isDemoMode()) {
+      return messages;
+    }
+    
+    // Process in batches to avoid overwhelming the IPFS gateway
+    const batchSize = 5;
+    const result: Message[] = [];
+    
+    for (let i = 0; i < messages.length; i += batchSize) {
+      const batch = messages.slice(i, i + batchSize);
+      const enrichedBatch = await Promise.all(
+        batch.map(async (message) => {
+          // Only try to load content from IPFS if the hash is a real IPFS hash (not starting with 0x)
+          if (!message.blockchainHash.startsWith('0x')) {
+            try {
+              const ipfsContent = await this.getFromIPFS(message.blockchainHash);
+              if (ipfsContent) {
+                // If we successfully retrieved IPFS content, we might want to use or validate it
+                console.log(`Retrieved IPFS content for message ${message.id}`);
+                // Note: In this implementation we're keeping the message content from the database
+                // but we could replace or validate it with the IPFS content if needed
+              }
+            } catch (error) {
+              console.error(`Failed to retrieve IPFS content for message ${message.id}:`, error);
+            }
+          }
+          return message;
+        })
+      );
+      
+      result.push(...enrichedBatch);
+    }
+    
+    return result;
   }
   
   private mapDbMessageToMessage(dbMessage: any): Message {

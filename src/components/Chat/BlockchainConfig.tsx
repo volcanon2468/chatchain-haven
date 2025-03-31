@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { toast } from "@/hooks/use-toast";
 const BlockchainConfig: React.FC = () => {
   const [apiKey, setApiKey] = useState("");
   const [secretKey, setSecretKey] = useState("");
+  const [gatewayUrl, setGatewayUrl] = useState("gateway.pinata.cloud");
   const [isConfigured, setIsConfigured] = useState(!blockchainService.isDemoMode());
   
   const handleSubmit = (e: React.FormEvent) => {
@@ -28,7 +29,7 @@ const BlockchainConfig: React.FC = () => {
     }
     
     try {
-      blockchainService.setApiKeys(apiKey, secretKey);
+      blockchainService.setApiKeys(apiKey, secretKey, gatewayUrl);
       setIsConfigured(true);
       setApiKey("");
       setSecretKey("");
@@ -83,8 +84,7 @@ const BlockchainConfig: React.FC = () => {
             </div>
             <Alert>
               <AlertDescription>
-                For demo purposes, messages are cached locally but metadata is stored on IPFS.
-                In a production environment, all message data would be encrypted and stored on the blockchain.
+                Messages are stored on IPFS using Pinata. Message metadata is cached locally for faster retrieval.
               </AlertDescription>
             </Alert>
             <div className="flex flex-col sm:flex-row gap-2">
@@ -115,6 +115,15 @@ const BlockchainConfig: React.FC = () => {
                 placeholder="Enter your Pinata Secret Key"
                 value={secretKey}
                 onChange={(e) => setSecretKey(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="gatewayUrl">Pinata Gateway URL</Label>
+              <Input
+                id="gatewayUrl"
+                placeholder="e.g., gateway.pinata.cloud or your custom gateway"
+                value={gatewayUrl}
+                onChange={(e) => setGatewayUrl(e.target.value)}
               />
             </div>
             <Alert>
