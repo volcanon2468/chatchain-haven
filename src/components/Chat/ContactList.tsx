@@ -1,19 +1,21 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useChat } from "@/context/ChatContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, UserPlus } from "lucide-react";
+import { Search, UserPlus, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 
 const ContactList: React.FC = () => {
-  const { contacts, addContact, createConversation } = useChat();
+  const { contacts, addContact, createConversation, searchUsers } = useChat();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [newContactUsername, setNewContactUsername] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [addingContact, setAddingContact] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -23,12 +25,32 @@ const ContactList: React.FC = () => {
       contact.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleAddContact = async () => {
-    if (!newContactUsername.trim()) return;
+  useEffect(() => {
+    const searchTimeout = setTimeout(async () => {
+      if (newContactUsername.trim().length >= 2) {
+        setIsSearching(true);
+        try {
+          const results = await searchUsers(newContactUsername);
+          setSearchResults(results);
+        } catch (error) {
+          console.error("Search error:", error);
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setSearchResults([]);
+      }
+    }, 500);
+
+    return () => clearTimeout(searchTimeout);
+  }, [newContactUsername, searchUsers]);
+
+  const handleAddContact = async (username: string) => {
+    if (!username.trim()) return;
     
     setAddingContact(true);
     try {
-      const success = await addContact(newContactUsername);
+      const success = await addContact(username);
       if (success) {
         setNewContactUsername("");
         setDialogOpen(false);
@@ -63,22 +85,69 @@ const ContactList: React.FC = () => {
                 <DialogTitle>Add New Contact</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 mt-4">
-                <div className="flex space-x-2">
+                <div className="relative">
                   <Input
-                    placeholder="Enter username"
+                    placeholder="Search by username"
                     value={newContactUsername}
                     onChange={(e) => setNewContactUsername(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !addingContact && newContactUsername.trim()) {
-                        handleAddContact();
-                      }
-                    }}
                   />
-                  <Button onClick={handleAddContact} disabled={!newContactUsername.trim() || addingContact}>
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Add
-                  </Button>
+                  {isSearching && (
+                    <div className="absolute right-2 top-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
                 </div>
+                
+                {searchResults.length > 0 ? (
+                  <ScrollArea className="max-h-60">
+                    <div className="space-y-2">
+                      {searchResults.map((user) => (
+                        <div 
+                          key={user.id}
+                          className="flex items-center justify-between p-2 rounded hover:bg-muted"
+                        >
+                          <div className="flex items-center">
+                            <Avatar className="h-8 w-8 mr-2">
+                              <AvatarImage src={user.avatar} />
+                              <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">{user.displayName}</p>
+                              <p className="text-xs text-muted-foreground">@{user.username}</p>
+                            </div>
+                          </div>
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleAddContact(user.username)}
+                            disabled={addingContact}
+                          >
+                            Add
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                ) : newContactUsername.trim().length > 1 && !isSearching ? (
+                  <div className="text-center py-2 text-muted-foreground">
+                    <p>No users found</p>
+                  </div>
+                ) : null}
+                
+                {newContactUsername.trim() && (
+                  <div className="flex justify-end">
+                    <Button 
+                      onClick={() => handleAddContact(newContactUsername)} 
+                      disabled={addingContact || isSearching}
+                    >
+                      {addingContact ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <UserPlus className="h-4 w-4 mr-2" />
+                      )}
+                      Add Contact
+                    </Button>
+                  </div>
+                )}
               </div>
             </DialogContent>
           </Dialog>

@@ -1,7 +1,7 @@
 
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import blockchainService, { Message } from '@/services/blockchainService';
-import { useAuth, User } from './auth';
+import { useAuth } from '@/context/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -44,6 +44,7 @@ interface ChatContextType {
   createConversation: (contactId: string) => void;
   createGroupConversation: (name: string, memberIds: string[]) => Promise<boolean>;
   addContact: (username: string) => Promise<boolean>;
+  searchUsers: (query: string) => Promise<Contact[]>;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -79,39 +80,93 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   useEffect(() => {
     if (currentConversation) {
       loadMessages(currentConversation);
+      
+      // Set up message refresh interval
+      const intervalId = setInterval(() => {
+        if (currentConversation) {
+          refreshMessages(currentConversation);
+        }
+      }, 5000); // Check for new messages every 5 seconds
+      
+      return () => clearInterval(intervalId);
     } else {
       setMessages([]);
     }
   }, [currentConversation]);
 
-  const loadContacts = () => {
-    const storedContacts = localStorage.getItem(`contacts_${user?.id}`);
+  const loadContacts = async () => {
+    if (!user) return;
+    
+    // Try to load from localStorage first
+    const storedContacts = localStorage.getItem(`contacts_${user.id}`);
+    let loadedContacts: Contact[] = [];
+    
     if (storedContacts) {
-      setContacts(JSON.parse(storedContacts));
+      loadedContacts = JSON.parse(storedContacts);
+    } 
+    
+    if (loadedContacts.length === 0) {
+      try {
+        // Fetch contacts from database
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .neq('id', user.id); // Exclude the current user
+          
+        if (error) {
+          console.error('Error fetching contacts:', error);
+          loadDemoContacts();
+        } else if (data && data.length > 0) {
+          loadedContacts = data.map(profile => ({
+            id: profile.id,
+            username: profile.username,
+            displayName: profile.display_name,
+            avatar: profile.avatar_url,
+            lastSeen: Date.now() - Math.floor(Math.random() * 60) * 60 * 1000, // Random last seen
+            status: profile.status || 'Hey there, I am using ChatChain!',
+          }));
+          
+          setContacts(loadedContacts);
+          localStorage.setItem(`contacts_${user.id}`, JSON.stringify(loadedContacts));
+        } else {
+          loadDemoContacts();
+        }
+      } catch (error) {
+        console.error('Error loading contacts:', error);
+        loadDemoContacts();
+      }
     } else {
-      const demoContacts: Contact[] = [
-        {
-          id: 'contact1',
-          username: 'alice',
-          displayName: 'Alice Johnson',
-          lastSeen: Date.now() - 5 * 60 * 1000,
-          status: 'Hey there, I am using ChatChain!',
-        },
-        {
-          id: 'contact2',
-          username: 'bob',
-          displayName: 'Bob Smith',
-          lastSeen: Date.now() - 35 * 60 * 1000,
-          status: 'Available for blockchain talk',
-        },
-      ];
-      setContacts(demoContacts);
-      localStorage.setItem(`contacts_${user?.id}`, JSON.stringify(demoContacts));
+      setContacts(loadedContacts);
     }
+  };
+  
+  const loadDemoContacts = () => {
+    if (!user) return;
+    
+    const demoContacts: Contact[] = [
+      {
+        id: 'contact1',
+        username: 'alice',
+        displayName: 'Alice Johnson',
+        lastSeen: Date.now() - 5 * 60 * 1000,
+        status: 'Hey there, I am using ChatChain!',
+      },
+      {
+        id: 'contact2',
+        username: 'bob',
+        displayName: 'Bob Smith',
+        lastSeen: Date.now() - 35 * 60 * 1000,
+        status: 'Available for blockchain talk',
+      },
+    ];
+    setContacts(demoContacts);
+    localStorage.setItem(`contacts_${user.id}`, JSON.stringify(demoContacts));
   };
 
   const loadConversations = async () => {
-    const storedConversations = localStorage.getItem(`conversations_${user?.id}`);
+    if (!user) return;
+    
+    const storedConversations = localStorage.getItem(`conversations_${user.id}`);
     let conversationsList: Conversation[] = [];
     
     if (storedConversations) {
@@ -195,6 +250,84 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     } finally {
       setIsLoadingMessages(false);
     }
+  };
+
+  const refreshMessages = async (conversation: Conversation) => {
+    if (!user) return;
+    
+    try {
+      let refreshedMessages: Message[] = [];
+      
+      if (conversation.type === 'direct') {
+        const contactId = conversation.participants[0].id;
+        refreshedMessages = await blockchainService.getMessages({
+          userId: user.id,
+          contactId,
+        });
+      } else if (conversation.type === 'group' && conversation.groupInfo) {
+        refreshedMessages = await blockchainService.getMessages({
+          groupId: conversation.groupInfo.id,
+        });
+      }
+      
+      // Only update if we have new messages
+      if (refreshedMessages.length !== messages.length) {
+        setMessages(refreshedMessages);
+        
+        const unreadMessageIds = refreshedMessages
+          .filter(msg => msg.sender !== user.id && !msg.readBy.includes(user.id))
+          .map(msg => msg.id);
+          
+        if (unreadMessageIds.length > 0) {
+          await blockchainService.markMessagesAsRead(unreadMessageIds, user.id);
+          
+          setConversations(prev => prev.map(conv => 
+            conv.id === conversation.id 
+              ? { ...conv, unreadCount: 0 } 
+              : conv
+          ));
+        }
+        
+        // Update last message for all conversations
+        updateConversationsWithLastMessages();
+      }
+    } catch (error) {
+      console.error('Error refreshing messages:', error);
+    }
+  };
+
+  const updateConversationsWithLastMessages = async () => {
+    if (!user) return;
+    
+    const updatedConversations = await Promise.all(
+      conversations.map(async (conv) => {
+        if (conv.type === 'direct') {
+          const contactId = conv.participants[0].id;
+          const messages = await blockchainService.getMessages({
+            userId: user.id,
+            contactId,
+          });
+          
+          const lastMessage = messages.length > 0 
+            ? messages[messages.length - 1] 
+            : undefined;
+            
+          const unreadCount = messages.filter(
+            msg => msg.sender === contactId && !msg.readBy.includes(user.id)
+          ).length;
+            
+          return {
+            ...conv,
+            lastMessage,
+            unreadCount,
+          };
+        }
+        return conv;
+      })
+    );
+    
+    setConversations(updatedConversations);
+    saveConversations(updatedConversations);
   };
 
   const sendMessage = async (content: string) => {
@@ -303,7 +436,8 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     if (!user) return false;
     
     try {
-      const contactExists = contacts.some(c => c.username === username);
+      // Check if already in contacts
+      const contactExists = contacts.some(c => c.username.toLowerCase() === username.toLowerCase());
       if (contactExists) {
         toast({
           title: "Contact already exists",
@@ -313,13 +447,14 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         return false;
       }
       
+      // Find the user in the database
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('username', username)
+        .ilike('username', username)
         .single();
       
-      if (profileError) {
+      if (profileError || !profileData) {
         console.error('Error fetching profile:', profileError);
         toast({
           title: "User not found",
@@ -329,15 +464,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         return false;
       }
       
-      if (!profileData) {
-        toast({
-          title: "User not found",
-          description: `No user found with username "${username}".`,
-          variant: "destructive"
-        });
-        return false;
-      }
-      
+      // Check if trying to add self
       if (profileData.id === user.id) {
         toast({
           title: "Cannot add yourself",
@@ -347,6 +474,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         return false;
       }
       
+      // Create new contact
       const newContact: Contact = {
         id: profileData.id,
         username: profileData.username,
@@ -356,9 +484,21 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         status: profileData.status || undefined,
       };
       
+      // Update contacts state and local storage
       const updatedContacts = [...contacts, newContact];
       setContacts(updatedContacts);
       localStorage.setItem(`contacts_${user.id}`, JSON.stringify(updatedContacts));
+      
+      // Create a conversation with this contact
+      const newConversation: Conversation = {
+        id: `conv_${newContact.id}`,
+        type: 'direct',
+        participants: [newContact],
+        unreadCount: 0,
+      };
+      
+      setConversations(prev => [...prev, newConversation]);
+      saveConversations([...conversations, newConversation]);
       
       toast({
         title: "Contact added",
@@ -374,6 +514,35 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         variant: "destructive"
       });
       return false;
+    }
+  };
+
+  const searchUsers = async (query: string): Promise<Contact[]> => {
+    if (!query.trim() || !user) return [];
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+        .neq('id', user.id) // Exclude current user
+        .limit(10);
+        
+      if (error) {
+        console.error('Error searching users:', error);
+        return [];
+      }
+      
+      return data.map(profile => ({
+        id: profile.id,
+        username: profile.username,
+        displayName: profile.display_name,
+        avatar: profile.avatar_url,
+        status: profile.status || undefined,
+      }));
+    } catch (error) {
+      console.error('Error searching users:', error);
+      return [];
     }
   };
 
@@ -395,6 +564,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       createConversation,
       createGroupConversation,
       addContact,
+      searchUsers,
     }}>
       {children}
     </ChatContext.Provider>

@@ -1,6 +1,7 @@
 
 import { toast } from "@/hooks/use-toast";
 import axios from 'axios';
+import { supabase } from "@/integrations/supabase/client";
 
 // Define message type
 export interface Message {
@@ -154,13 +155,33 @@ class BlockchainService {
       this.messages.push(newMessage);
       this.updateCache();
       
-      console.log('Message sent to blockchain:', newMessage);
+      // Also store in Supabase database for cross-user sync
+      try {
+        const { error } = await supabase.from('messages').insert({
+          id: newMessage.id,
+          sender_id: newMessage.sender,
+          receiver_id: newMessage.receiver,
+          group_id: newMessage.groupId,
+          content: newMessage.content,
+          timestamp: new Date(newMessage.timestamp).toISOString(),
+          read_by: newMessage.readBy,
+          blockchain_hash: newMessage.blockchainHash
+        });
+        
+        if (error) {
+          console.error('Error saving message to database:', error);
+        }
+      } catch (dbError) {
+        console.error('Database error while saving message:', dbError);
+      }
+      
+      console.log('Message sent to blockchain and database:', newMessage);
       return newMessage;
     } catch (error) {
       console.error('Error sending message to blockchain:', error);
       toast({
         title: "Message Error",
-        description: "Failed to send message to blockchain. Please try again.",
+        description: "Failed to send message. Please try again.",
         variant: "destructive",
       });
       throw error;
@@ -169,28 +190,113 @@ class BlockchainService {
   
   // Get messages for a specific conversation (direct or group)
   async getMessages(options: { userId?: string; contactId?: string; groupId?: string }): Promise<Message[]> {
-    await new Promise(resolve => setTimeout(resolve, 100)); // Simulate network delay
-    
-    return this.messages.filter(message => {
+    try {
+      // First, try to get messages from Supabase for real-time sync
+      let dbMessages: Message[] = [];
+      
       if (options.groupId) {
-        return message.groupId === options.groupId;
+        // Group messages
+        const { data, error } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('group_id', options.groupId)
+          .order('timestamp', { ascending: true });
+          
+        if (error) {
+          console.error('Error fetching group messages from DB:', error);
+        } else if (data) {
+          dbMessages = data.map(this.mapDbMessageToMessage);
+        }
+      } else if (options.userId && options.contactId) {
+        // Direct messages between two users
+        const { data, error } = await supabase
+          .from('messages')
+          .select('*')
+          .or(`sender_id.eq.${options.userId},receiver_id.eq.${options.userId}`)
+          .or(`sender_id.eq.${options.contactId},receiver_id.eq.${options.contactId}`)
+          .is('group_id', null)
+          .order('timestamp', { ascending: true });
+          
+        if (error) {
+          console.error('Error fetching direct messages from DB:', error);
+        } else if (data) {
+          // Filter to only include messages between these two users
+          dbMessages = data.filter(msg => 
+            (msg.sender_id === options.userId && msg.receiver_id === options.contactId) || 
+            (msg.sender_id === options.contactId && msg.receiver_id === options.userId)
+          ).map(this.mapDbMessageToMessage);
+        }
       }
       
-      if (options.userId && options.contactId) {
-        return (
-          (message.sender === options.userId && message.receiver === options.contactId) || 
-          (message.sender === options.contactId && message.receiver === options.userId)
-        );
+      // Merge with local cache to ensure we have everything
+      const localMessages = this.messages.filter(message => {
+        if (options.groupId) {
+          return message.groupId === options.groupId;
+        }
+        
+        if (options.userId && options.contactId) {
+          return (
+            (message.sender === options.userId && message.receiver === options.contactId) || 
+            (message.sender === options.contactId && message.receiver === options.userId)
+          );
+        }
+        
+        return false;
+      });
+      
+      // Merge and deduplicate messages from both sources
+      const mergedMessages = [...dbMessages];
+      
+      // Add local messages that aren't in the database yet
+      for (const localMsg of localMessages) {
+        if (!mergedMessages.some(m => m.id === localMsg.id)) {
+          mergedMessages.push(localMsg);
+        }
       }
       
-      return false;
-    }).sort((a, b) => a.timestamp - b.timestamp);
+      // Sort by timestamp
+      return mergedMessages.sort((a, b) => a.timestamp - b.timestamp);
+    } catch (error) {
+      console.error('Error retrieving messages:', error);
+      
+      // Fallback to local cache if database query fails
+      return this.messages.filter(message => {
+        if (options.groupId) {
+          return message.groupId === options.groupId;
+        }
+        
+        if (options.userId && options.contactId) {
+          return (
+            (message.sender === options.userId && message.receiver === options.contactId) || 
+            (message.sender === options.contactId && message.receiver === options.userId)
+          );
+        }
+        
+        return false;
+      }).sort((a, b) => a.timestamp - b.timestamp);
+    }
+  }
+  
+  private mapDbMessageToMessage(dbMessage: any): Message {
+    return {
+      id: dbMessage.id,
+      sender: dbMessage.sender_id,
+      receiver: dbMessage.receiver_id,
+      groupId: dbMessage.group_id,
+      content: dbMessage.content,
+      timestamp: new Date(dbMessage.timestamp).getTime(),
+      readBy: dbMessage.read_by || [],
+      blockchainHash: dbMessage.blockchain_hash
+    };
   }
   
   // Mark messages as read
   async markMessagesAsRead(messageIds: string[], userId: string): Promise<void> {
+    if (!messageIds.length) return;
+    
     let updated = false;
     
+    // Update local cache
     this.messages = this.messages.map(message => {
       if (messageIds.includes(message.id) && !message.readBy.includes(userId)) {
         updated = true;
@@ -204,6 +310,41 @@ class BlockchainService {
     
     if (updated) {
       this.updateCache();
+    }
+    
+    // Update in database
+    try {
+      for (const msgId of messageIds) {
+        // Get current read_by array from database
+        const { data, error } = await supabase
+          .from('messages')
+          .select('read_by')
+          .eq('id', msgId)
+          .single();
+          
+        if (error) {
+          console.error(`Error fetching read status for message ${msgId}:`, error);
+          continue;
+        }
+        
+        // Add user to read_by array if not already present
+        const readBy = data.read_by || [];
+        if (!readBy.includes(userId)) {
+          readBy.push(userId);
+          
+          // Update database
+          const { error: updateError } = await supabase
+            .from('messages')
+            .update({ read_by: readBy })
+            .eq('id', msgId);
+            
+          if (updateError) {
+            console.error(`Error updating read status for message ${msgId}:`, updateError);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error updating read status in database:', error);
     }
   }
   
