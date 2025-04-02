@@ -2,7 +2,6 @@ import { toast } from "@/hooks/use-toast";
 import axios from 'axios';
 import { supabase } from "@/integrations/supabase/client";
 
-// Define message type
 export interface Message {
   id: string;
   sender: string;
@@ -14,7 +13,6 @@ export interface Message {
   blockchainHash: string;
 }
 
-// Integration with IPFS via Pinata
 class BlockchainService {
   private messages: Message[] = [];
   private localStorageKey = 'pinata_message_cache';
@@ -25,10 +23,8 @@ class BlockchainService {
   private configKey = 'pinata_config';
   
   constructor() {
-    // Load messages from localStorage cache on init
     this.loadMessagesFromCache();
     
-    // Load Pinata configuration if available
     this.loadPinataConfig();
   }
   
@@ -40,7 +36,6 @@ class BlockchainService {
       }
     } catch (error) {
       console.error("Error loading messages from cache:", error);
-      // If there's an error reading from localStorage, initialize with empty array
       this.messages = [];
     }
   }
@@ -86,12 +81,10 @@ class BlockchainService {
     }
   }
 
-  // Demo authentication status for Pinata
   public isDemoMode(): boolean {
     return !this.pinataApiKey || !this.pinataSecretKey;
   }
   
-  // Method to set Pinata API keys at runtime
   public setApiKeys(apiKey: string, secretKey: string, gatewayUrl: string = 'https://gateway.pinata.cloud'): void {
     this.pinataApiKey = apiKey;
     this.pinataSecretKey = secretKey;
@@ -104,12 +97,10 @@ class BlockchainService {
     });
   }
 
-  // Upload message content to IPFS via Pinata
   private async uploadToIPFS(content: any): Promise<string | null> {
-    // If in demo mode, generate fake hash
     if (this.isDemoMode()) {
       console.log("Using demo mode with fake IPFS hash");
-      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 300)); 
       return this.generateFakeHash();
     }
     
@@ -151,13 +142,11 @@ class BlockchainService {
         description: "Failed to store message on IPFS. Using local storage instead.",
         variant: "destructive",
       });
-      return this.generateFakeHash(); // Fallback to fake hash
+      return this.generateFakeHash(); 
     }
   }
 
-  // Get content from IPFS via Pinata gateway
   private async getFromIPFS(hash: string): Promise<any | null> {
-    // If in demo mode or using fake hash, return null
     if (this.isDemoMode() || hash.startsWith('0x')) {
       return null;
     }
@@ -180,9 +169,7 @@ class BlockchainService {
     }
   }
   
-  // Send a message to the blockchain (IPFS in this case)
   async sendMessage(message: Omit<Message, 'id' | 'timestamp' | 'blockchainHash' | 'readBy'>): Promise<Message> {
-    // Create a new message
     const messageContent = {
       ...message,
       timestamp: Date.now(),
@@ -191,14 +178,12 @@ class BlockchainService {
     try {
       console.log("Preparing to send message:", messageContent);
       
-      // Upload to IPFS or generate fake hash in demo mode
       const ipfsHash = await this.uploadToIPFS(messageContent);
       
       if (!ipfsHash) {
         throw new Error("Failed to upload to IPFS");
       }
       
-      // Create full message with blockchain hash
       const newMessage: Message = {
         ...message,
         id: crypto.randomUUID(),
@@ -207,11 +192,9 @@ class BlockchainService {
         blockchainHash: ipfsHash,
       };
       
-      // Add to local cache
       this.messages.push(newMessage);
       this.updateCache();
       
-      // Also store in Supabase database for cross-user sync
       try {
         const { error } = await supabase.from('messages').insert({
           id: newMessage.id,
@@ -244,14 +227,11 @@ class BlockchainService {
     }
   }
   
-  // Get messages for a specific conversation (direct or group)
   async getMessages(options: { userId?: string; contactId?: string; groupId?: string }): Promise<Message[]> {
     try {
-      // First, try to get messages from Supabase for real-time sync
       let dbMessages: Message[] = [];
       
       if (options.groupId) {
-        // Group messages
         const { data, error } = await supabase
           .from('messages')
           .select('*')
@@ -264,7 +244,6 @@ class BlockchainService {
           dbMessages = data.map(this.mapDbMessageToMessage);
         }
       } else if (options.userId && options.contactId) {
-        // Direct messages between two users
         const { data, error } = await supabase
           .from('messages')
           .select('*')
@@ -276,7 +255,6 @@ class BlockchainService {
         if (error) {
           console.error('Error fetching direct messages from DB:', error);
         } else if (data) {
-          // Filter to only include messages between these two users
           dbMessages = data.filter(msg => 
             (msg.sender_id === options.userId && msg.receiver_id === options.contactId) || 
             (msg.sender_id === options.contactId && msg.receiver_id === options.userId)
@@ -284,7 +262,6 @@ class BlockchainService {
         }
       }
       
-      // Merge with local cache to ensure we have everything
       const localMessages = this.messages.filter(message => {
         if (options.groupId) {
           return message.groupId === options.groupId;
@@ -300,25 +277,20 @@ class BlockchainService {
         return false;
       });
       
-      // Merge and deduplicate messages from both sources
       const mergedMessages = [...dbMessages];
       
-      // Add local messages that aren't in the database yet
       for (const localMsg of localMessages) {
         if (!mergedMessages.some(m => m.id === localMsg.id)) {
           mergedMessages.push(localMsg);
         }
       }
       
-      // Attempt to load IPFS content for non-demo messages if needed
       const enhancedMessages = await this.enrichMessagesWithIPFSContent(mergedMessages);
       
-      // Sort by timestamp
       return enhancedMessages.sort((a, b) => a.timestamp - b.timestamp);
     } catch (error) {
       console.error('Error retrieving messages:', error);
       
-      // Fallback to local cache if database query fails
       return this.messages.filter(message => {
         if (options.groupId) {
           return message.groupId === options.groupId;
@@ -336,14 +308,11 @@ class BlockchainService {
     }
   }
   
-  // Enrich messages with IPFS content if available and needed
   private async enrichMessagesWithIPFSContent(messages: Message[]): Promise<Message[]> {
-    // Skip IPFS enrichment in demo mode
     if (this.isDemoMode()) {
       return messages;
     }
     
-    // Process in batches to avoid overwhelming the IPFS gateway
     const batchSize = 5;
     const result: Message[] = [];
     
@@ -351,15 +320,11 @@ class BlockchainService {
       const batch = messages.slice(i, i + batchSize);
       const enrichedBatch = await Promise.all(
         batch.map(async (message) => {
-          // Only try to load content from IPFS if the hash is a real IPFS hash (not starting with 0x)
           if (!message.blockchainHash.startsWith('0x')) {
             try {
               const ipfsContent = await this.getFromIPFS(message.blockchainHash);
               if (ipfsContent) {
-                // If we successfully retrieved IPFS content, we might want to use or validate it
                 console.log(`Retrieved IPFS content for message ${message.id}`);
-                // Note: In this implementation we're keeping the message content from the database
-                // but we could replace or validate it with the IPFS content if needed
               }
             } catch (error) {
               console.error(`Failed to retrieve IPFS content for message ${message.id}:`, error);
@@ -388,13 +353,11 @@ class BlockchainService {
     };
   }
   
-  // Mark messages as read
   async markMessagesAsRead(messageIds: string[], userId: string): Promise<void> {
     if (!messageIds.length) return;
     
     let updated = false;
     
-    // Update local cache
     this.messages = this.messages.map(message => {
       if (messageIds.includes(message.id) && !message.readBy.includes(userId)) {
         updated = true;
@@ -410,10 +373,8 @@ class BlockchainService {
       this.updateCache();
     }
     
-    // Update in database
     try {
       for (const msgId of messageIds) {
-        // Get current read_by array from database
         const { data, error } = await supabase
           .from('messages')
           .select('read_by')
@@ -425,12 +386,10 @@ class BlockchainService {
           continue;
         }
         
-        // Add user to read_by array if not already present
         const readBy = data.read_by || [];
         if (!readBy.includes(userId)) {
           readBy.push(userId);
           
-          // Update database
           const { error: updateError } = await supabase
             .from('messages')
             .update({ read_by: readBy })
@@ -446,20 +405,16 @@ class BlockchainService {
     }
   }
   
-  // Generate a fake blockchain transaction hash for demo mode
   private generateFakeHash(): string {
-    // Use a similar pattern to what our database is using for wallet addresses
     return '0x' + Array.from({ length: 40 }, () => 
       Math.floor(Math.random() * 16).toString(16)).join('');
   }
   
-  // Clear all message cache - useful for testing
   clearCache(): void {
     this.messages = [];
     localStorage.removeItem(this.localStorageKey);
   }
 }
 
-// Create a singleton instance
 const blockchainService = new BlockchainService();
 export default blockchainService;
