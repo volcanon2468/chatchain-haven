@@ -47,7 +47,6 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
       <div className="p-4 bg-whatsapp text-white">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -89,7 +88,6 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
         </div>
       </div>
 
-      {/* Navigation */}
       <nav className="flex flex-col flex-1 p-2 space-y-1 overflow-y-auto">
         <Button 
           variant="ghost" 
@@ -117,7 +115,6 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
         </Button>
       </nav>
 
-      {/* Wallet display */}
       <div className="p-4 border-t border-sidebar-border">
         <div className="bg-sidebar-accent rounded-md p-3">
           <p className="text-xs font-medium mb-1">Blockchain Wallet</p>
@@ -127,7 +124,6 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
         </div>
       </div>
 
-      {/* Footer */}
       <div className="p-4 border-t border-sidebar-border flex justify-between">
         <Button 
           variant="ghost" 

@@ -7,7 +7,6 @@ import LoginForm from "@/components/Auth/LoginForm";
 const Login: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
 
-  // If already authenticated, redirect to dashboard
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -24,7 +23,7 @@ const Login: React.FC = () => {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-md mb-8 text-center">
         <h1 className="text-3xl font-bold text-whatsapp mb-2">
-          ChatChain Haven
+          #Chat
         </h1>
         <p className="text-muted-foreground">
           Secure messaging powered by blockchain technology

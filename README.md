@@ -1,7 +1,7 @@
 
-# ChatChain Haven
+# #Chat
 
-A WhatsApp-like messaging application with blockchain message storage. Built with React, TypeScript, and Tailwind CSS.
+A blockchain-based secure messaging application. Built with React, TypeScript, and Tailwind CSS.
 
 ## Features
 
@@ -18,7 +18,7 @@ A WhatsApp-like messaging application with blockchain message storage. Built wit
 - **State Management**: Context API
 - **Routing**: React Router
 - **Data Fetching**: TanStack Query
-- **Blockchain Simulation**: Local storage with transaction hashes
+- **Blockchain Integration**: Pinata IPFS
 
 ## Getting Started
 
@@ -30,8 +30,8 @@ A WhatsApp-like messaging application with blockchain message storage. Built wit
 
 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/chatchain-haven.git
-cd chatchain-haven
+git clone https://github.com/yourusername/chat.git
+cd chat
 ```
 
 2. Install dependencies
@@ -69,19 +69,6 @@ src/
 │   └── blockchainService.ts # Blockchain simulation
 └── lib/              # Utility functions
 ```
-
-## Deployment
-
-See [deploy.md](deploy.md) for detailed deployment instructions.
-
-## Future Enhancements
-
-- Integration with a real blockchain network (Ethereum, Solana, etc.)
-- End-to-end encryption
-- File sharing capabilities
-- Read receipts and typing indicators
-- Push notifications
-- Voice messages
 
 ## License
 
