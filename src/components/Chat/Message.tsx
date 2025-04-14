@@ -12,7 +12,6 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface MessageProps {
   message: MessageType;
@@ -49,7 +48,7 @@ const Message: React.FC<MessageProps> = ({
     <ContextMenu>
       <ContextMenuTrigger>
         <div 
-          className={`flex ${isFromCurrentUser ? 'justify-end' : 'justify-start'}`}
+          className={`flex ${isFromCurrentUser ? 'justify-end' : 'justify-start'} my-1.5`}
           onClick={isSelectionMode ? handleSelect : undefined}
         >
           <div
@@ -58,7 +57,8 @@ const Message: React.FC<MessageProps> = ({
               ${isFromCurrentUser ? 'message-bubble-sent' : 'message-bubble-received'} 
               animate-message-appear
               ${isSelectionMode ? 'pl-8' : ''}
-              ${isSelected ? 'bg-primary/10' : ''}
+              ${isSelected ? (isFromCurrentUser ? 'bg-primary/20' : 'bg-secondary/70') : ''}
+              transition-colors duration-200
             `}
           >
             {isSelectionMode && (
@@ -115,10 +115,10 @@ const Message: React.FC<MessageProps> = ({
               Delete for me
             </ContextMenuItem>
             <ContextMenuSeparator />
-            <ContextMenuItem onClick={() => navigator.clipboard.writeText(message.content)} className="text-muted-foreground">
+            <ContextMenuItem onClick={() => navigator.clipboard.writeText(message.content)}>
               Copy text
             </ContextMenuItem>
-            <ContextMenuItem onClick={() => navigator.clipboard.writeText(message.blockchainHash)} className="text-muted-foreground">
+            <ContextMenuItem onClick={() => navigator.clipboard.writeText(message.blockchainHash)}>
               Copy IPFS hash
             </ContextMenuItem>
           </>

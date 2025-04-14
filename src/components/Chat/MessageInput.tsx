@@ -46,6 +46,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disabled = f
         variant="ghost"
         className="rounded-full"
         disabled={disabled}
+        aria-label="Attach file"
       >
         <Paperclip className="h-5 w-5" />
       </Button>
@@ -66,6 +67,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disabled = f
           variant="ghost"
           className="absolute right-0 bottom-0.5 rounded-full h-8 w-8"
           disabled={disabled}
+          aria-label="Emoji"
         >
           <Smile className="h-5 w-5" />
         </Button>
@@ -76,6 +78,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, disabled = f
         className="rounded-full"
         onClick={handleSend}
         disabled={!message.trim() || disabled}
+        aria-label="Send message"
       >
         <Send className="h-5 w-5" />
       </Button>

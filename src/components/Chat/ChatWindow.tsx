@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Loader2, MoreVertical, Users, RotateCcw, Trash, Check, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
 import MessageInput from "./MessageInput";
 import Message from "./Message";
 import { formatTimestamp } from "./ChatList";
@@ -22,6 +23,7 @@ import {
 const ChatWindow: React.FC = () => {
   const { currentConversation, messages, isLoadingMessages, sendMessage, refreshConversation } = useChat();
   const { user } = useAuth();
+  const { toast } = useToast();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -57,6 +59,10 @@ const ChatWindow: React.FC = () => {
       blockchainService.clearDeletedMessages(user.id);
       if (refreshConversation && currentConversation) {
         refreshConversation(currentConversation.id);
+        toast({
+          title: "Messages Restored",
+          description: "Your deleted messages have been restored.",
+        });
       }
     }
   };
@@ -87,6 +93,12 @@ const ChatWindow: React.FC = () => {
       selectedMessages.forEach(messageId => {
         blockchainService.deleteMessage(messageId, user.id);
       });
+      
+      toast({
+        title: "Messages Deleted",
+        description: `${selectedMessages.length} message${selectedMessages.length > 1 ? 's' : ''} deleted for you.`,
+      });
+      
       setSelectedMessages([]);
       setIsSelectionMode(false);
       if (refreshConversation && currentConversation) {
@@ -136,10 +148,10 @@ const ChatWindow: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-gray-100">
-      <div className="bg-white p-3 flex items-center justify-between border-b">
+      <div className="bg-white p-3 flex items-center justify-between border-b shadow-sm">
         <div className="flex items-center">
           <Avatar className="h-10 w-10 mr-3">
-            <AvatarImage src={avatar} />
+            <AvatarImage src={avatar} alt={name} />
             <AvatarFallback>
               {currentConversation.type === 'direct' ? initials : <Users className="h-5 w-5" />}
             </AvatarFallback>
@@ -172,6 +184,7 @@ const ChatWindow: React.FC = () => {
               variant="ghost" 
               size="icon"
               onClick={toggleSelectionMode}
+              aria-label="Cancel selection"
             >
               <X className="h-5 w-5" />
             </Button>
@@ -179,7 +192,7 @@ const ChatWindow: React.FC = () => {
         ) : (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" aria-label="Menu">
                 <MoreVertical className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
@@ -217,7 +230,7 @@ const ChatWindow: React.FC = () => {
             <p className="text-sm">Start the conversation by sending a message</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-1">
             {messages.map((message) => (
               <Message
                 key={message.id}
@@ -234,7 +247,7 @@ const ChatWindow: React.FC = () => {
       </ScrollArea>
 
       {isSelectionMode && selectedMessages.length > 0 && (
-        <div className="bg-primary text-primary-foreground p-3 flex items-center justify-between">
+        <div className="bg-primary text-primary-foreground p-3 flex items-center justify-between shadow-md">
           <div className="flex items-center">
             <span className="text-sm font-medium">{selectedMessages.length} selected</span>
           </div>
@@ -250,7 +263,7 @@ const ChatWindow: React.FC = () => {
         </div>
       )}
 
-      <div className="p-3 bg-white border-t">
+      <div className="p-3 bg-white border-t shadow-sm">
         <MessageInput onSendMessage={sendMessage} disabled={isSelectionMode} />
       </div>
 
@@ -258,6 +271,7 @@ const ChatWindow: React.FC = () => {
         <Button
           className="absolute bottom-20 right-6 rounded-full h-10 w-10 p-0 shadow-lg"
           onClick={scrollToBottom}
+          aria-label="Scroll to bottom"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

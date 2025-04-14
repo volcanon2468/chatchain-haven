@@ -86,7 +86,7 @@
 }
 
 .message-bubble-received {
-  @apply bg-card text-card-foreground rounded-lg rounded-tl-none p-3 max-w-[80%] md:max-w-md break-words shadow-sm;
+  @apply bg-card text-card-foreground rounded-lg rounded-tl-none p-3 max-w-[80%] md:max-w-md break-words shadow-sm border;
 }
 
 .chat-scrollbar {
@@ -120,4 +120,19 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Selection mode highlight */
+.selection-highlight {
+  @apply transition-all duration-200;
+}
+
+/* Improve button interactions */
+.action-button {
+  @apply transition-transform duration-200 hover:scale-105 active:scale-95;
+}
+
+/* Improve toast notifications */
+.toast-notification {
+  @apply rounded-lg shadow-lg;
 }
