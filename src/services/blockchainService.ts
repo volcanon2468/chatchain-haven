@@ -20,11 +20,13 @@ class BlockchainService {
   private pinataSecretKey = 'bae89724ce421998357f446ef4743140e771b62e30734fa885b3204f399cc777';
   private pinataGatewayUrl = 'pink-blank-felidae-946.mypinata.cloud';
   private configKey = 'pinata_config';
+  private deletedMessagesKey = 'deleted_messages';
+  private deletedMessages: Record<string, string[]> = {};
   
   constructor() {
     this.loadMessagesFromCache();
-    
     this.loadPinataConfig();
+    this.loadDeletedMessages();
   }
   
   private loadMessagesFromCache(): void {
@@ -64,6 +66,48 @@ class BlockchainService {
     } catch (error) {
       console.error("Error loading Pinata config:", error);
     }
+  }
+
+  private loadDeletedMessages(): void {
+    try {
+      const deletedData = localStorage.getItem(this.deletedMessagesKey);
+      if (deletedData) {
+        this.deletedMessages = JSON.parse(deletedData);
+      }
+    } catch (error) {
+      console.error("Error loading deleted messages:", error);
+      this.deletedMessages = {};
+    }
+  }
+
+  private saveDeletedMessages(): void {
+    try {
+      localStorage.setItem(this.deletedMessagesKey, JSON.stringify(this.deletedMessages));
+    } catch (error) {
+      console.error("Error saving deleted messages:", error);
+    }
+  }
+
+  public deleteMessage(messageId: string, userId: string): void {
+    if (!userId) return;
+    
+    if (!this.deletedMessages[userId]) {
+      this.deletedMessages[userId] = [];
+    }
+    
+    if (!this.deletedMessages[userId].includes(messageId)) {
+      this.deletedMessages[userId].push(messageId);
+      this.saveDeletedMessages();
+      
+      toast({
+        description: "Message deleted from your view",
+      });
+    }
+  }
+
+  public isMessageDeletedForUser(messageId: string, userId: string): boolean {
+    if (!userId || !this.deletedMessages[userId]) return false;
+    return this.deletedMessages[userId].includes(messageId);
   }
 
   private savePinataConfig(): void {
@@ -285,24 +329,35 @@ class BlockchainService {
       
       const enhancedMessages = await this.enrichMessagesWithIPFSContent(mergedMessages);
       
+      if (options.userId) {
+        return enhancedMessages
+          .filter(msg => !this.isMessageDeletedForUser(msg.id, options.userId))
+          .sort((a, b) => a.timestamp - b.timestamp);
+      }
+      
       return enhancedMessages.sort((a, b) => a.timestamp - b.timestamp);
     } catch (error) {
       console.error('Error retrieving messages:', error);
       
-      return this.messages.filter(message => {
-        if (options.groupId) {
-          return message.groupId === options.groupId;
-        }
+      const filteredMessages = this.messages
+        .filter(message => {
+          if (options.groupId) {
+            return message.groupId === options.groupId;
+          }
+          
+          if (options.userId && options.contactId) {
+            return (
+              (message.sender === options.userId && message.receiver === options.contactId) || 
+              (message.sender === options.contactId && message.receiver === options.userId)
+            );
+          }
+          
+          return false;
+        })
+        .filter(msg => options.userId ? !this.isMessageDeletedForUser(msg.id, options.userId) : true)
+        .sort((a, b) => a.timestamp - b.timestamp);
         
-        if (options.userId && options.contactId) {
-          return (
-            (message.sender === options.userId && message.receiver === options.contactId) || 
-            (message.sender === options.contactId && message.receiver === options.userId)
-          );
-        }
-        
-        return false;
-      }).sort((a, b) => a.timestamp - b.timestamp);
+      return filteredMessages;
     }
   }
   
@@ -411,6 +466,16 @@ class BlockchainService {
   clearCache(): void {
     this.messages = [];
     localStorage.removeItem(this.localStorageKey);
+  }
+  
+  clearDeletedMessages(userId: string): void {
+    if (userId && this.deletedMessages[userId]) {
+      delete this.deletedMessages[userId];
+      this.saveDeletedMessages();
+      toast({
+        description: "Deleted messages restored",
+      });
+    }
   }
 }
 

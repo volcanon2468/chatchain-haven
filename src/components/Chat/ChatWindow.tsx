@@ -4,11 +4,12 @@ import { useChat } from "@/context/ChatContext";
 import { useAuth } from "@/context/auth"; 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Loader2, MoreVertical, Users } from "lucide-react";
+import { Loader2, MoreVertical, Users, RotateCcw, Trash } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import MessageInput from "./MessageInput";
 import Message from "./Message";
 import { formatTimestamp } from "./ChatList";
+import blockchainService from "@/services/blockchainService";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -19,7 +20,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const ChatWindow: React.FC = () => {
-  const { currentConversation, messages, isLoadingMessages, sendMessage } = useChat();
+  const { currentConversation, messages, isLoadingMessages, sendMessage, refreshConversation } = useChat();
   const { user } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
@@ -47,6 +48,15 @@ const ChatWindow: React.FC = () => {
       .join('')
       .toUpperCase()
       .substring(0, 2);
+  };
+
+  const handleRestoreDeletedMessages = () => {
+    if (user) {
+      blockchainService.clearDeletedMessages(user.id);
+      if (refreshConversation && currentConversation) {
+        refreshConversation(currentConversation.id);
+      }
+    }
   };
 
   if (!currentConversation) {
@@ -124,7 +134,14 @@ const ChatWindow: React.FC = () => {
             <DropdownMenuItem>View profile</DropdownMenuItem>
             <DropdownMenuItem>Search</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">Clear chat</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleRestoreDeletedMessages}>
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Restore deleted messages
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-destructive">
+              <Trash className="mr-2 h-4 w-4" />
+              Clear chat
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
