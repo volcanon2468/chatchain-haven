@@ -1,11 +1,9 @@
-
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import blockchainService, { Message } from '@/services/blockchainService';
 import { useAuth } from '@/context/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-// Chat types
 export interface Contact {
   id: string;
   username: string;
@@ -45,6 +43,7 @@ interface ChatContextType {
   createGroupConversation: (name: string, memberIds: string[]) => Promise<boolean>;
   addContact: (username: string) => Promise<boolean>;
   searchUsers: (query: string) => Promise<Contact[]>;
+  refreshConversation: (conversationId: string) => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -81,12 +80,11 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     if (currentConversation) {
       loadMessages(currentConversation);
       
-      // Set up message refresh interval
       const intervalId = setInterval(() => {
         if (currentConversation) {
           refreshMessages(currentConversation);
         }
-      }, 5000); // Check for new messages every 5 seconds
+      }, 5000);
       
       return () => clearInterval(intervalId);
     } else {
@@ -97,7 +95,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
   const loadContacts = async () => {
     if (!user) return;
     
-    // Try to load from localStorage first
     const storedContacts = localStorage.getItem(`contacts_${user.id}`);
     let loadedContacts: Contact[] = [];
     
@@ -107,11 +104,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     
     if (loadedContacts.length === 0) {
       try {
-        // Fetch contacts from database
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
-          .neq('id', user.id); // Exclude the current user
+          .neq('id', user.id);
           
         if (error) {
           console.error('Error fetching contacts:', error);
@@ -122,7 +118,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
             username: profile.username,
             displayName: profile.display_name,
             avatar: profile.avatar_url,
-            lastSeen: Date.now() - Math.floor(Math.random() * 60) * 60 * 1000, // Random last seen
+            lastSeen: Date.now() - Math.floor(Math.random() * 60) * 60 * 1000,
             status: profile.status || 'Hey there, I am using ChatChain!',
           }));
           
@@ -270,7 +266,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         });
       }
       
-      // Only update if we have new messages
       if (refreshedMessages.length !== messages.length) {
         setMessages(refreshedMessages);
         
@@ -288,7 +283,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
           ));
         }
         
-        // Update last message for all conversations
         updateConversationsWithLastMessages();
       }
     } catch (error) {
@@ -436,7 +430,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     if (!user) return false;
     
     try {
-      // Check if already in contacts
       const contactExists = contacts.some(c => c.username.toLowerCase() === username.toLowerCase());
       if (contactExists) {
         toast({
@@ -447,7 +440,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         return false;
       }
       
-      // Find the user in the database
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -464,7 +456,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         return false;
       }
       
-      // Check if trying to add self
       if (profileData.id === user.id) {
         toast({
           title: "Cannot add yourself",
@@ -474,7 +465,6 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         return false;
       }
       
-      // Create new contact
       const newContact: Contact = {
         id: profileData.id,
         username: profileData.username,
@@ -484,12 +474,10 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         status: profileData.status || undefined,
       };
       
-      // Update contacts state and local storage
       const updatedContacts = [...contacts, newContact];
       setContacts(updatedContacts);
       localStorage.setItem(`contacts_${user.id}`, JSON.stringify(updatedContacts));
       
-      // Create a conversation with this contact
       const newConversation: Conversation = {
         id: `conv_${newContact.id}`,
         type: 'direct',
@@ -525,7 +513,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
         .from('profiles')
         .select('*')
         .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
-        .neq('id', user.id) // Exclude current user
+        .neq('id', user.id)
         .limit(10);
         
       if (error) {
@@ -552,6 +540,13 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
     }
   };
 
+  const refreshConversation = (conversationId: string) => {
+    const conversation = conversations.find(conv => conv.id === conversationId);
+    if (conversation && user) {
+      loadMessages(conversation);
+    }
+  };
+
   return (
     <ChatContext.Provider value={{
       conversations,
@@ -565,6 +560,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ children }) => {
       createGroupConversation,
       addContact,
       searchUsers,
+      refreshConversation,
     }}>
       {children}
     </ChatContext.Provider>
