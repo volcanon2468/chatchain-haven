@@ -105,6 +105,31 @@ class BlockchainService {
     }
   }
 
+  public deleteMessages(messageIds: string[], userId: string): void {
+    if (!userId || !messageIds.length) return;
+    
+    if (!this.deletedMessages[userId]) {
+      this.deletedMessages[userId] = [];
+    }
+    
+    let newlyDeleted = 0;
+    
+    messageIds.forEach(messageId => {
+      if (!this.deletedMessages[userId].includes(messageId)) {
+        this.deletedMessages[userId].push(messageId);
+        newlyDeleted++;
+      }
+    });
+    
+    if (newlyDeleted > 0) {
+      this.saveDeletedMessages();
+      
+      toast({
+        description: `${newlyDeleted} ${newlyDeleted === 1 ? 'message' : 'messages'} deleted from your view`,
+      });
+    }
+  }
+
   public isMessageDeletedForUser(messageId: string, userId: string): boolean {
     if (!userId || !this.deletedMessages[userId]) return false;
     return this.deletedMessages[userId].includes(messageId);

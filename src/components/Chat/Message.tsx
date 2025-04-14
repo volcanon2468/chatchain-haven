@@ -2,7 +2,7 @@
 import React from "react";
 import { Message as MessageType } from "@/services/blockchainService";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Check, Trash } from "lucide-react";
+import { Check, Trash, Square, CheckSquare } from "lucide-react";
 import { useAuth } from "@/context/auth";
 import blockchainService from "@/services/blockchainService";
 import {
@@ -12,13 +12,23 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface MessageProps {
   message: MessageType;
   isFromCurrentUser: boolean;
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onSelect?: (messageId: string) => void;
 }
 
-const Message: React.FC<MessageProps> = ({ message, isFromCurrentUser }) => {
+const Message: React.FC<MessageProps> = ({ 
+  message, 
+  isFromCurrentUser, 
+  isSelectionMode = false, 
+  isSelected = false,
+  onSelect 
+}) => {
   const formattedTime = formatMessageTime(message.timestamp);
   const { user } = useAuth();
   
@@ -27,17 +37,39 @@ const Message: React.FC<MessageProps> = ({ message, isFromCurrentUser }) => {
       blockchainService.deleteMessage(message.id, user.id);
     }
   };
+
+  const handleSelect = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isSelectionMode && onSelect) {
+      onSelect(message.id);
+    }
+  };
   
   return (
     <ContextMenu>
       <ContextMenuTrigger>
-        <div className={`flex ${isFromCurrentUser ? 'justify-end' : 'justify-start'}`}>
+        <div 
+          className={`flex ${isFromCurrentUser ? 'justify-end' : 'justify-start'}`}
+          onClick={isSelectionMode ? handleSelect : undefined}
+        >
           <div
             className={`
+              relative
               ${isFromCurrentUser ? 'message-bubble-sent' : 'message-bubble-received'} 
               animate-message-appear
+              ${isSelectionMode ? 'pl-8' : ''}
+              ${isSelected ? 'bg-primary/10' : ''}
             `}
           >
+            {isSelectionMode && (
+              <div className="absolute left-2 top-1/2 transform -translate-y-1/2">
+                {isSelected ? (
+                  <CheckSquare className="h-4 w-4 text-primary" />
+                ) : (
+                  <Square className="h-4 w-4 text-muted-foreground" />
+                )}
+              </div>
+            )}
             <div className="flex flex-col">
               <div className="whitespace-pre-wrap break-words">{message.content}</div>
               <div className="flex items-center justify-end mt-1 space-x-1">
@@ -76,17 +108,21 @@ const Message: React.FC<MessageProps> = ({ message, isFromCurrentUser }) => {
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem onClick={handleDeleteMessage} className="text-destructive">
-          <Trash className="h-4 w-4 mr-2" />
-          Delete for me
-        </ContextMenuItem>
-        <ContextMenuSeparator />
-        <ContextMenuItem onClick={() => navigator.clipboard.writeText(message.content)} className="text-muted-foreground">
-          Copy text
-        </ContextMenuItem>
-        <ContextMenuItem onClick={() => navigator.clipboard.writeText(message.blockchainHash)} className="text-muted-foreground">
-          Copy IPFS hash
-        </ContextMenuItem>
+        {!isSelectionMode && (
+          <>
+            <ContextMenuItem onClick={handleDeleteMessage} className="text-destructive">
+              <Trash className="h-4 w-4 mr-2" />
+              Delete for me
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => navigator.clipboard.writeText(message.content)} className="text-muted-foreground">
+              Copy text
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => navigator.clipboard.writeText(message.blockchainHash)} className="text-muted-foreground">
+              Copy IPFS hash
+            </ContextMenuItem>
+          </>
+        )}
       </ContextMenuContent>
     </ContextMenu>
   );

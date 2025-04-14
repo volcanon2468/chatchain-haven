@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { useChat } from "@/context/ChatContext";
 import { useAuth } from "@/context/auth"; 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Loader2, MoreVertical, Users, RotateCcw, Trash } from "lucide-react";
+import { Loader2, MoreVertical, Users, RotateCcw, Trash, Check, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import MessageInput from "./MessageInput";
 import Message from "./Message";
@@ -23,6 +24,8 @@ const ChatWindow: React.FC = () => {
   const { user } = useAuth();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedMessages, setSelectedMessages] = useState<string[]>([]);
 
   useEffect(() => {
     if (isAtBottom) {
@@ -52,6 +55,40 @@ const ChatWindow: React.FC = () => {
   const handleRestoreDeletedMessages = () => {
     if (user) {
       blockchainService.clearDeletedMessages(user.id);
+      if (refreshConversation && currentConversation) {
+        refreshConversation(currentConversation.id);
+      }
+    }
+  };
+
+  const toggleSelectionMode = () => {
+    setIsSelectionMode(!isSelectionMode);
+    setSelectedMessages([]);
+  };
+
+  const toggleMessageSelection = (messageId: string) => {
+    setSelectedMessages(prev => 
+      prev.includes(messageId) 
+        ? prev.filter(id => id !== messageId) 
+        : [...prev, messageId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (messages.length === selectedMessages.length) {
+      setSelectedMessages([]);
+    } else {
+      setSelectedMessages(messages.map(message => message.id));
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    if (user && selectedMessages.length > 0) {
+      selectedMessages.forEach(messageId => {
+        blockchainService.deleteMessage(messageId, user.id);
+      });
+      setSelectedMessages([]);
+      setIsSelectionMode(false);
       if (refreshConversation && currentConversation) {
         refreshConversation(currentConversation.id);
       }
@@ -121,28 +158,52 @@ const ChatWindow: React.FC = () => {
             )}
           </div>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <MoreVertical className="h-5 w-5" />
+        {isSelectionMode ? (
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSelectAll}
+              className="text-xs"
+            >
+              {selectedMessages.length === messages.length ? "Deselect All" : "Select All"}
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Chat options</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>View profile</DropdownMenuItem>
-            <DropdownMenuItem>Search</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleRestoreDeletedMessages}>
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Restore deleted messages
-            </DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive">
-              <Trash className="mr-2 h-4 w-4" />
-              Clear chat
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={toggleSelectionMode}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreVertical className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Chat options</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>View profile</DropdownMenuItem>
+              <DropdownMenuItem>Search</DropdownMenuItem>
+              <DropdownMenuItem onClick={toggleSelectionMode}>
+                <Trash className="mr-2 h-4 w-4" />
+                Delete messages
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleRestoreDeletedMessages}>
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Restore deleted messages
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-destructive">
+                <Trash className="mr-2 h-4 w-4" />
+                Clear chat
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       <ScrollArea className="flex-1 p-4 chat-scrollbar" onScroll={handleScroll}>
@@ -162,6 +223,9 @@ const ChatWindow: React.FC = () => {
                 key={message.id}
                 message={message}
                 isFromCurrentUser={user?.id === message.sender}
+                isSelectionMode={isSelectionMode}
+                isSelected={selectedMessages.includes(message.id)}
+                onSelect={toggleMessageSelection}
               />
             ))}
           </div>
@@ -169,11 +233,28 @@ const ChatWindow: React.FC = () => {
         <div ref={messagesEndRef} />
       </ScrollArea>
 
+      {isSelectionMode && selectedMessages.length > 0 && (
+        <div className="bg-primary text-primary-foreground p-3 flex items-center justify-between">
+          <div className="flex items-center">
+            <span className="text-sm font-medium">{selectedMessages.length} selected</span>
+          </div>
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            onClick={handleDeleteSelected}
+            className="bg-background text-foreground hover:bg-accent"
+          >
+            <Trash className="h-4 w-4 mr-2" />
+            Delete for me
+          </Button>
+        </div>
+      )}
+
       <div className="p-3 bg-white border-t">
-        <MessageInput onSendMessage={sendMessage} />
+        <MessageInput onSendMessage={sendMessage} disabled={isSelectionMode} />
       </div>
 
-      {!isAtBottom && messages.length > 8 && (
+      {!isAtBottom && messages.length > 8 && !isSelectionMode && (
         <Button
           className="absolute bottom-20 right-6 rounded-full h-10 w-10 p-0 shadow-lg"
           onClick={scrollToBottom}

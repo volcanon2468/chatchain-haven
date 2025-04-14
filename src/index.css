@@ -1,104 +1,99 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
+ 
 @layer base {
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 159 51% 48%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 159 51% 94%;
-    --secondary-foreground: 159 50% 30%;
-
+ 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 159 51% 94%;
-    --accent-foreground: 159 50% 30%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
+ 
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+ 
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+ 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 159 51% 48%;
-
+ 
+    --primary: 142 76% 36%;
+    --primary-foreground: 0 0% 100%;
+ 
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+ 
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+ 
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+ 
+    --ring: 142 76% 36%;
+ 
     --radius: 0.5rem;
 
-    --sidebar-background: 159 51% 98%;
-    --sidebar-foreground: 220 13% 25%;
-    --sidebar-primary: 159 51% 48%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 159 51% 94%;
-    --sidebar-accent-foreground: 159 50% 30%;
-    --sidebar-border: 159 51% 88%;
-    --sidebar-ring: 159 51% 48%;
+    --whatsapp: 142 76% 36%;
   }
-
+ 
   .dark {
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 159 50% 30%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 159 30% 17%;
-    --secondary-foreground: 210 40% 98%;
-
+ 
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 159 30% 17%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
+ 
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+ 
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+ 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 159 51% 48%;
-
-    --sidebar-background: 159 30% 15%;
-    --sidebar-foreground: 159 12% 88%;
-    --sidebar-primary: 159 51% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 159 30% 20%;
-    --sidebar-accent-foreground: 159 12% 88%;
-    --sidebar-border: 159 30% 20%;
-    --sidebar-ring: 159 51% 48%;
+ 
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+ 
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+ 
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+ 
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 85.7% 97.3%;
+ 
+    --ring: 217.2 32.6% 17.5%;
   }
 }
-
+ 
 @layer base {
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
-/* Custom scrollbar for the chat area */
+.message-bubble-sent {
+  @apply bg-primary text-primary-foreground rounded-lg rounded-tr-none p-3 max-w-[80%] md:max-w-md break-words shadow-sm;
+}
+
+.message-bubble-received {
+  @apply bg-card text-card-foreground rounded-lg rounded-tl-none p-3 max-w-[80%] md:max-w-md break-words shadow-sm;
+}
+
+.chat-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
 .chat-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
@@ -109,42 +104,20 @@
 
 .chat-scrollbar::-webkit-scrollbar-thumb {
   background-color: rgba(0, 0, 0, 0.2);
-  border-radius: 10px;
+  border-radius: 20px;
 }
 
-.chat-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(0, 0, 0, 0.3);
+.animate-message-appear {
+  animation: message-appear 0.3s ease-out;
 }
 
-/* Message bubble styles */
-.message-bubble-sent {
-  @apply bg-whatsapp-light text-white rounded-lg p-3 max-w-[75%] ml-auto relative;
-}
-
-.message-bubble-sent:after {
-  content: '';
-  position: absolute;
-  right: -6px;
-  bottom: 0;
-  width: 10px;
-  height: 13px;
-  background-color: inherit;
-  border-bottom-left-radius: 10px;
-  clip-path: polygon(0 0, 100% 100%, 0 100%);
-}
-
-.message-bubble-received {
-  @apply bg-white text-gray-800 rounded-lg p-3 max-w-[75%] mr-auto relative;
-}
-
-.message-bubble-received:after {
-  content: '';
-  position: absolute;
-  left: -6px;
-  bottom: 0;
-  width: 10px;
-  height: 13px;
-  background-color: inherit;
-  border-bottom-right-radius: 10px;
-  clip-path: polygon(0 100%, 100% 100%, 100% 0);
+@keyframes message-appear {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
